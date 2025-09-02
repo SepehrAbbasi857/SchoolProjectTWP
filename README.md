@@ -1,22 +1,3 @@
-#!/usr/bin/env python3
-"""
-vocab_trainer.py
-
-یک برنامه خط فرمانی ساده برای وارد کردن واژه‌ها، مرور روزانه و ذخیره‌سازی کلمات مشکل.
-وقتی کاربر کلمه‌ای را اشتباه بزند، برنامه آن را در حافظه با اولویت بالاتر نگهداری می‌کند
-و برای دادن مثال و توضیح بیشتر از API چت‌جی‌پی‌تی استفاده می‌کند.
-
-نیازمندی‌ها:
-    pip install openai
-
-نحوهٔ استفاده:
-    export OPENAI_API_KEY="your_api_key_here"
-    python vocab_trainer.py add "aberration" "a departure from what is normal"
-    python vocab_trainer.py practice
-    python vocab_trainer.py list
-
-این فایل تنها یک پیاده‌سازی نمونه است — برای استفادهٔ جدی، کلید API را ایمن نگه دارید، هزینه‌ها و نرخ درخواست‌ها را مدیریت کنید، و از خطاهای شبکه به درستی محافظت کنید.
-"""
 
 import os
 import sqlite3
@@ -27,7 +8,6 @@ from typing import Optional
 import textwrap
 import sys
 
-# سعی می‌کنیم از new OpenAI python client استفاده کنیم. اگر کتابخانهٔ قدیمی نصب است، تا حدی سازگاریم.
 try:
     from openai import OpenAI
     OPENAI_NEW = True
@@ -40,7 +20,6 @@ except Exception:
 
 DB_PATH = os.path.expanduser("~/.vocab_trainer/vocab.db")
 
-# --- دیتابیس ---
 class VocabDB:
     def __init__(self, path=DB_PATH):
         os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -105,8 +84,6 @@ class VocabDB:
     def set_examples(self, word_id: int, examples: dict):
         self.update_after_review(word_id, False, { 'examples': json.dumps(examples) })
 
-# --- الگوریتم SM-2 (نسخهٔ ساده‌شده) ---
-
 def sm2_update(repetition:int, easiness:float, interval:int, quality:int):
     """
     quality: 0..5 (5 = perfect)
@@ -127,8 +104,6 @@ def sm2_update(repetition:int, easiness:float, interval:int, quality:int):
     # update easiness factor
     easiness = max(1.3, easiness + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)))
     return repetition, easiness, interval
-
-# --- تماس با ChatGPT برای مثال‌ها و توضیحات ---
 
 def make_openai_client():
     api_key = os.getenv('OPENAI_API_KEY')
@@ -201,7 +176,6 @@ def fetch_examples_with_chatgpt(word: str, meaning: str, n_examples: int = 5):
                 parsed = json.loads(json_text)
                 return parsed
             except Exception:
-                # اگر خروجی درست نبود، ارسال خام متن به عنوان fallback
                 return {"word": word, "meaning": meaning, "raw": text}
         else:
             return {"word": word, "meaning": meaning, "raw": text}
@@ -209,8 +183,6 @@ def fetch_examples_with_chatgpt(word: str, meaning: str, n_examples: int = 5):
     except Exception as e:
         print("خطا هنگام تماس با OpenAI:", e)
         return None
-
-# --- جلسهٔ تمرینی ---
 
 def practice_session(db: VocabDB, n=10):
     due = db.get_due_words(limit=n)
@@ -229,8 +201,7 @@ def practice_session(db: VocabDB, n=10):
         if ans == "":
             print("معنی: ", meaning)
             quality = 0
-        else:
-            # ساده‌سازی: اگر کاربر شامل substring از meaning شد، صحیح در نظر می‌گیریم
+        else: 
             if ans.lower() in meaning.lower() or meaning.lower() in ans.lower():
                 print("درست! ✅")
                 quality = 5
@@ -242,7 +213,6 @@ def practice_session(db: VocabDB, n=10):
         next_date = (date.today() + timedelta(days=new_interval)).isoformat()
         new_priority = priority
         if quality < 3:
-            # افزایش اولویت برای کلمه‌هایی که اشتباه زده شد
             new_priority = priority + 2
         else:
             new_priority = max(0, priority - 1)
@@ -273,8 +243,6 @@ def practice_session(db: VocabDB, n=10):
                 print("دریافت مثال از ChatGPT موفق نبود.")
 
     print('\nمرور امروز تمام شد.')
-
-# --- CLI ---
 
 def main():
     parser = argparse.ArgumentParser(description='Vocab trainer — یادگیری کلمات با Python و ChatGPT')
